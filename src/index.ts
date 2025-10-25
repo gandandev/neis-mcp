@@ -263,7 +263,11 @@ export default {
     }
 
     if (url.pathname === "/mcp") {
-      return MyMCP.serve("/mcp").fetch(request, env, ctx);
+      const augmentedRequest =
+        request.method.toUpperCase() === "POST"
+          ? ensureStreamableHttpAcceptHeaders(request)
+          : request;
+      return MyMCP.serve("/mcp").fetch(augmentedRequest, env, ctx);
     }
 
     // Try to serve any static asset via ASSETS binding
@@ -283,3 +287,38 @@ export default {
     return new Response("Not found", { status: 404 });
   },
 };
+
+/**
+ * Streamable HTTP requires clients to accept both JSON (for initial responses)
+ * and text/event-stream (for follow-up chunks). Some clients only send one of
+ * these headers, which causes the MCP adapter to reject the request with 406.
+ * We defensively widen the Accept header so the handler can proceed.
+ */
+function ensureStreamableHttpAcceptHeaders(request: Request): Request {
+  const headers = new Headers(request.headers);
+  const accept = headers.get("accept") ?? "";
+
+  const hasJson = accept.toLowerCase().includes("application/json");
+  const hasEventStream = accept
+    .toLowerCase()
+    .includes("text/event-stream");
+
+  if (hasJson && hasEventStream) {
+    return request;
+  }
+
+  const values = accept
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+
+  if (!hasJson) {
+    values.push("application/json");
+  }
+  if (!hasEventStream) {
+    values.push("text/event-stream");
+  }
+
+  headers.set("accept", values.join(", "));
+  return new Request(request, { headers });
+}
