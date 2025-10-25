@@ -65,33 +65,9 @@ export class MyMCP extends McpAgent {
       } as any;
     };
 
-    // Generic NEIS request covering all endpoints
-    this.server.registerTool(
-      "neis.request",
-      {
-        description: "Call any NEIS endpoint with query parameters",
-        inputSchema: {
-          endpoint: z
-            .string()
-            .describe("NEIS endpoint, e.g., schoolInfo, mealServiceDietInfo"),
-          params: z
-            .record(z.union([z.string(), z.number()]))
-            .default({})
-            .describe("Query params for the endpoint (without KEY/Type)"),
-        },
-      },
-      async ({ endpoint, params }, extra) => {
-        return callNeis(
-          (this as unknown as { env: Env }).env,
-          endpoint,
-          params
-        );
-      }
-    );
-
     // Convenience: search schools by name
     this.server.registerTool(
-      "neis.school.search",
+      "Search School",
       {
         description: "Find schools by name (and optional office code)",
         inputSchema: {
@@ -119,32 +95,9 @@ export class MyMCP extends McpAgent {
       }
     );
 
-    // Convenience: school info by codes
-    this.server.registerTool(
-      "neis.school.info",
-      {
-        description: "Get school details by office and school codes",
-        inputSchema: {
-          officeCode: z.string().describe("ATPT_OFCDC_SC_CODE"),
-          schoolCode: z.string().describe("SD_SCHUL_CODE"),
-        },
-      },
-      async ({ officeCode, schoolCode }, extra) => {
-        const params: Record<string, string> = {
-          ATPT_OFCDC_SC_CODE: officeCode,
-          SD_SCHUL_CODE: schoolCode,
-        };
-        return callNeis(
-          (this as unknown as { env: Env }).env,
-          "schoolInfo",
-          params
-        );
-      }
-    );
-
     // Convenience: meals by date or range
     this.server.registerTool(
-      "neis.meal",
+      "Get Meal Info",
       {
         description: "Get meal info for a date or range",
         inputSchema: {
@@ -190,7 +143,7 @@ export class MyMCP extends McpAgent {
 
     // Convenience: timetable
     this.server.registerTool(
-      "neis.timetable",
+      "Get Timetable",
       {
         description: "Get class timetable for a school and date",
         inputSchema: {
@@ -248,7 +201,7 @@ export class MyMCP extends McpAgent {
 
     // Convenience: school schedule (holidays/events)
     this.server.registerTool(
-      "neis.schedule",
+      "Get Schedule",
       {
         description: "Get school schedule/holidays for a date or range",
         inputSchema: {
