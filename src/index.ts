@@ -4,10 +4,18 @@ import { z } from "zod";
 
 // Define our MCP agent with NEIS tools
 export class MyMCP extends McpAgent {
-  server = new McpServer({
-    name: "NEIS MCP",
-    version: "1.0.0",
-  });
+  server = new McpServer(
+    {
+      name: "NEIS MCP",
+      version: "1.0.0",
+      icons: [
+        { src: "/favicon.svg", mimeType: "image/svg+xml", sizes: ["any"] },
+      ],
+    },
+    {
+      capabilities: { logging: {} },
+    }
+  );
 
   async init() {
     // Helper to call NEIS Open API
@@ -72,12 +80,12 @@ export class MyMCP extends McpAgent {
         description: "Find schools by name (and optional office code)",
         inputSchema: {
           name: z.string().describe("School name (partial allowed)"),
-          officeCode: z
+          officeCode: z.coerce
             .string()
             .optional()
             .describe("Education office code (ATPT_OFCDC_SC_CODE)"),
-          page: z.number().int().positive().default(1),
-          size: z.number().int().positive().max(1000).default(100),
+          page: z.coerce.number().int().positive().default(1),
+          size: z.coerce.number().int().positive().max(1000).default(100),
         },
       },
       async ({ name, officeCode, page, size }, extra) => {
@@ -101,23 +109,23 @@ export class MyMCP extends McpAgent {
       {
         description: "Get meal info for a date or range",
         inputSchema: {
-          officeCode: z.string().describe("ATPT_OFCDC_SC_CODE"),
-          schoolCode: z.string().describe("SD_SCHUL_CODE"),
-          ymd: z
+          officeCode: z.coerce.string().describe("ATPT_OFCDC_SC_CODE"),
+          schoolCode: z.coerce.string().describe("SD_SCHUL_CODE"),
+          ymd: z.coerce
             .string()
             .regex(/^\d{8}$/)
             .optional()
             .describe("Single date YYYYMMDD"),
-          fromYmd: z
+          fromYmd: z.coerce
             .string()
             .regex(/^\d{8}$/)
             .optional(),
-          toYmd: z
+          toYmd: z.coerce
             .string()
             .regex(/^\d{8}$/)
             .optional(),
-          page: z.number().int().positive().default(1),
-          size: z.number().int().positive().max(1000).default(100),
+          page: z.coerce.number().int().positive().default(1),
+          size: z.coerce.number().int().positive().max(1000).default(100),
         },
       },
       async (
@@ -147,19 +155,19 @@ export class MyMCP extends McpAgent {
       {
         description: "Get class timetable for a school and date",
         inputSchema: {
-          officeCode: z.string().describe("ATPT_OFCDC_SC_CODE"),
-          schoolCode: z.string().describe("SD_SCHUL_CODE"),
+          officeCode: z.coerce.string().describe("ATPT_OFCDC_SC_CODE"),
+          schoolCode: z.coerce.string().describe("SD_SCHUL_CODE"),
           schoolType: z
             .enum(["elementary", "middle", "high", "special"]) // maps to els/mis/his/sps
             .describe("School level"),
-          grade: z.string().describe("GRADE (학년)"),
-          className: z.string().describe("CLRM_NM (반)"),
-          ymd: z
+          grade: z.coerce.string().describe("GRADE (학년)"),
+          className: z.coerce.string().describe("CLRM_NM (반)"),
+          ymd: z.coerce
             .string()
             .regex(/^\d{8}$/)
             .describe("ALL_TI_YMD (YYYYMMDD)"),
-          page: z.number().int().positive().default(1),
-          size: z.number().int().positive().max(1000).default(100),
+          page: z.coerce.number().int().positive().default(1),
+          size: z.coerce.number().int().positive().max(1000).default(100),
         },
       },
       async (
@@ -205,22 +213,22 @@ export class MyMCP extends McpAgent {
       {
         description: "Get school schedule/holidays for a date or range",
         inputSchema: {
-          officeCode: z.string().describe("ATPT_OFCDC_SC_CODE"),
-          schoolCode: z.string().describe("SD_SCHUL_CODE"),
-          ymd: z
+          officeCode: z.coerce.string().describe("ATPT_OFCDC_SC_CODE"),
+          schoolCode: z.coerce.string().describe("SD_SCHUL_CODE"),
+          ymd: z.coerce
             .string()
             .regex(/^\d{8}$/)
             .optional(),
-          fromYmd: z
+          fromYmd: z.coerce
             .string()
             .regex(/^\d{8}$/)
             .optional(),
-          toYmd: z
+          toYmd: z.coerce
             .string()
             .regex(/^\d{8}$/)
             .optional(),
-          page: z.number().int().positive().default(1),
-          size: z.number().int().positive().max(1000).default(100),
+          page: z.coerce.number().int().positive().default(1),
+          size: z.coerce.number().int().positive().max(1000).default(100),
         },
       },
       async (
@@ -258,22 +266,18 @@ export default {
       return MyMCP.serve("/mcp").fetch(request, env, ctx);
     }
 
-    // Serve favicon if available via ASSETS binding (no moving files)
-    if (url.pathname === "/favicon.svg") {
-      try {
-        const assets = (
-          env as unknown as {
-            ASSETS?: { fetch?: (r: Request) => Promise<Response> };
-          }
-        ).ASSETS;
-        if (assets && typeof assets.fetch === "function") {
-          // attempt to fetch static asset
-          return assets.fetch(request);
+    // Try to serve any static asset via ASSETS binding
+    try {
+      const assets = (
+        env as unknown as {
+          ASSETS?: { fetch?: (r: Request) => Promise<Response> };
         }
-      } catch {
-        // ignore and fall through
+      ).ASSETS;
+      if (assets && typeof assets.fetch === "function") {
+        return assets.fetch(request);
       }
-      return new Response("", { status: 404 });
+    } catch {
+      // ignore and fall through
     }
 
     return new Response("Not found", { status: 404 });
