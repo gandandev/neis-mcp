@@ -5,7 +5,7 @@ services:
     buildCommand: uv sync
     startCommand: uv run python src/server.py
     plan: free
-    autoDeploy: false
+    autoDeploy: true
     envVars:
       - key: ENVIRONMENT
         value: production
