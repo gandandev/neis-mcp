@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: neis-mcp
+    runtime: python
+    buildCommand: uv sync
+    startCommand: uv run python src/server.py
+    plan: free
+    autoDeploy: false
+    envVars:
+      - key: ENVIRONMENT
+        value: production
